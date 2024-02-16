@@ -98,32 +98,31 @@ app.post("/login/", async (request, response) => {
 
 // Middleware to Authenticate
 
-const checkUserAuth = (request, response, next)=>{
-    const authHeader = request.headers['authorization'];
-    if(authHeader===undefined){
-        response.status(401);
-        response.send("Invalid JWT Token");
-        return;
-    }
-    else{
-        const jwtToken = authHeader.split(" ")[1];
-        if(jwtToken===undefined){
-            response.status(401);
-            response.send("Invalid JWT Token");
-            return;           
+const checkUserAuth = (request, response, next) => {
+  const authHeader = request.headers["authorization"];
+  if (authHeader === undefined) {
+    response.status(401);
+    response.send("Invalid JWT Token");
+    return;
+  } else {
+    const jwtToken = authHeader.split(" ")[1];
+    if (jwtToken === undefined) {
+      response.status(401);
+      response.send("Invalid JWT Token");
+      return;
+    } else {
+      jwtToken.verify(jwtToken, "my_token", async (error, payload) => {
+        if (error) {
+          response.status(401);
+          response.send("Invalid JWT Token");
+          return;
+        } else {
+          request.userDetails = payload;
+          next();
         }
-        else{
-            jwtToken.verify(jwtToken,"my_token", async(error, payload)=>{
-                if(error){
-                    response.status(401);
-                    response.send("Invalid JWT Token");
-                    return;                          
-                }
-                else{
-                    request.userDetails = payload;
-                    next();
-                }
-            });
-        }
+      });
     }
-}
+  }
+};
+
+//
