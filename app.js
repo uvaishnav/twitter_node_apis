@@ -156,3 +156,55 @@ app.get("/user/following/", checkUserAuth, async (request, response) => {
   const userFollowing = await db.all(getFollowingMembers);
   response.send(userFollowing);
 });
+
+// API 5 : User Followers
+// Returns the list of all names of people who follows the user
+
+app.get("/user/followers/", checkUserAuth, async (request, response) => {
+  const { user_id } = request.userDetails;
+  console.log(user_id);
+  const getFollowerMembers = `select u.name from user u, follower f
+    where u.user_id = f.follower_user_id and f.following_user_id = ${user_id}`;
+  const userFollowers = await db.all(getFollowerMembers);
+  response.send(userFollowers);
+});
+
+// API 6 : tweets
+// If the user requests a tweet of the user he is following, return the tweet, likes count, replies count and date-time
+
+app.get("/tweets/:tweetId/", checkUserAuth, async (request, response) => {
+  const { tweetId } = request.params;
+  const { user_id } = request.userDetails;
+  console.log(tweetId, user_id);
+
+  const getTweet = `select * from tweet t, follower f where t.user_id = f.following_user_id
+    and f.follower_user_id = ${user_id} and t.tweet_id = ${tweetId};`;
+
+  const reqTweet = await db.get(getTweet);
+  if (reqTweet === undefined) {
+    response.status(401);
+    response.send("Invalid Request");
+    return;
+  } else {
+    const getLikeCount = `select count(l.like_id) as likes
+        from like l
+        where l.tweet_id = ${tweetId}
+        group by l.tweet_id;`;
+
+    const numLikeTweets = await db.get(getLikeCount);
+
+    const getReplyCount = `select count(r.reply_id) as replies
+    from reply r 
+    where r.tweet_id = ${tweetId}
+    group by r.tweet_id;`;
+
+    const numReplyTweets = await db.get(getReplyCount);
+
+    response.send({
+      tweet: reqTweet.tweet,
+      likes: numLikeTweets.likes,
+      replies: numReplyTweets.replies,
+      dateTime: reqTweet.date_time,
+    });
+  }
+});
