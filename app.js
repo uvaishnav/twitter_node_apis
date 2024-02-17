@@ -138,9 +138,21 @@ app.get("/user/tweets/feed/", checkUserAuth, async (request, response) => {
         select f.following_user_id from follower f
         where f.follower_user_id = ${user_id}
     )
-    order by t.date_time desc
+    order by t.date_time
     limit 4
     `;
   const userFeed = await db.all(getUserFeed);
   response.send(userFeed);
+});
+
+// API 4 : User Following
+// Returns the list of all names of people whom the user follows
+
+app.get("/user/following/", checkUserAuth, async (request, response) => {
+  const { user_id } = request.userDetails;
+  console.log(user_id);
+  const getFollowingMembers = `select u.name from user u, follower f
+    where u.user_id = f.following_user_id and f.follower_user_id = ${user_id}`;
+  const userFollowing = await db.all(getFollowingMembers);
+  response.send(userFollowing);
 });
