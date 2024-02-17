@@ -111,7 +111,7 @@ const checkUserAuth = (request, response, next) => {
       response.send("Invalid JWT Token");
       return;
     } else {
-      jwtToken.verify(jwtToken, "my_token", async (error, payload) => {
+      jwt.verify(jwtToken, "my_token", async (error, payload) => {
         if (error) {
           response.status(401);
           response.send("Invalid JWT Token");
@@ -125,4 +125,22 @@ const checkUserAuth = (request, response, next) => {
   }
 };
 
-//
+// AP1 3 : tweets feed
+// Returns the latest tweets of people whom the user follows. Return 4 tweets at a time
+
+app.get("/user/tweets/feed/", checkUserAuth, async (request, response) => {
+  const { user_id } = request.userDetails;
+  console.log(user_id);
+  const getUserFeed = `
+    select u.username, t.tweet, t.date_time as dateTime
+    from tweet t, user u where t.user_id = u.user_id and
+    t.user_id in (
+        select f.following_user_id from follower f
+        where f.follower_user_id = ${user_id}
+    )
+    order by t.date_time desc
+    limit 4
+    `;
+  const userFeed = await db.all(getUserFeed);
+  response.send(userFeed);
+});
