@@ -296,3 +296,58 @@ GROUP BY
   const userTweetsInfo = await db.all(getTweets);
   response.send(userTweetsInfo);
 });
+
+// API 10 : Tweet
+// Create a tweet in the tweet table
+
+const { format } = require("date-fns");
+
+app.post("/user/tweets/", checkUserAuth, async (request, response) => {
+  const { user_id } = request.userDetails;
+  const { tweet } = request.body;
+  const currDate = new Date();
+  const currDateFormat = format(currDate, "yyyy-M-d HH:mm:ss");
+  console.log(currDateFormat);
+  const postTweet = `insert into tweet(tweet, user_id, date_time)
+    values(
+        '${tweet}',
+        ${user_id},
+        '${currDateFormat}'
+    );`;
+
+  try {
+    await db.run(postTweet);
+    response.send("Created a Tweet");
+  } catch (e) {
+    console.log(`cant add this tweet : ${e.message}`);
+  }
+});
+
+// API 10 : delete Tweet
+// Delete the tweet of the user
+
+app.delete("/tweets/:tweetId/", checkUserAuth, async (request, response) => {
+  const { tweetId } = request.params;
+  const { user_id } = request.userDetails;
+  console.log(tweetId, user_id);
+
+  const getTweetDetails = `select * from tweet where tweet_id = ${tweetId};`;
+  const tweetDetails = await db.get(getTweetDetails);
+
+  if (tweetDetails.user_id !== user_id) {
+    console.log(tweetDetails.user_id, user_id);
+    response.status(401);
+    response.send("Invalid Request");
+    return;
+  } else {
+    const deleteTweet = `delete from tweet where tweet_id = ${tweetId}`;
+    try {
+      await db.run(deleteTweet);
+      response.send("Tweet Removed");
+    } catch (e) {
+      console.log(`Cant delete the tweet : ${e.message}`);
+    }
+  }
+});
+
+module.exports = app;
