@@ -208,3 +208,91 @@ app.get("/tweets/:tweetId/", checkUserAuth, async (request, response) => {
     });
   }
 });
+
+// API 7 : Tweet liked by -
+// If the user requests a tweet of a user he is following, return the list of usernames who liked the tweet
+
+app.get("/tweets/:tweetId/likes/", checkUserAuth, async (request, response) => {
+  const { tweetId } = request.params;
+  const { user_id } = request.userDetails;
+  console.log(tweetId, user_id);
+
+  const getTweet = `select * from tweet t, follower f where t.user_id = f.following_user_id
+    and f.follower_user_id = ${user_id} and t.tweet_id = ${tweetId};`;
+  const reqTweet = await db.get(getTweet);
+  if (reqTweet === undefined) {
+    response.status(401);
+    response.send("Invalid Request");
+    return;
+  } else {
+    const getTweetLiked = `select u.name as name from user u, like l
+        where l.user_id = u.user_id and l.tweet_id = ${tweetId};`;
+    const liked = [];
+    const likedNames = await db.all(getTweetLiked);
+    likedNames.forEach((name) => {
+      liked.push(name.name);
+    });
+    response.send({
+      likes: liked,
+    });
+  }
+});
+
+// API 8 : tweet replies
+// If the user requests a tweet of a user he is following, return the list of replies.
+
+app.get(
+  "/tweets/:tweetId/replies/",
+  checkUserAuth,
+  async (request, response) => {
+    const { tweetId } = request.params;
+    const { user_id } = request.userDetails;
+    console.log(tweetId, user_id);
+
+    const getTweet = `select * from tweet t, follower f where t.user_id = f.following_user_id
+    and f.follower_user_id = ${user_id} and t.tweet_id = ${tweetId};`;
+    const reqTweet = await db.get(getTweet);
+
+    if (reqTweet === undefined) {
+      response.status(401);
+      response.send("Invalid Request");
+      return;
+    } else {
+      const getTweetReplied = `select u.name as name, r.reply as reply from user u, reply r
+        where r.user_id = u.user_id and r.tweet_id = ${tweetId};`;
+      const replied = [];
+      const repliedNames = await db.all(getTweetReplied);
+      repliedNames.forEach((reply) => {
+        replied.push(reply);
+      });
+      response.send({
+        replies: replied,
+      });
+    }
+  }
+);
+
+// API 9 : User tweets
+// Returns a list of all tweets of the user
+
+app.get("/user/tweets/", checkUserAuth, async (request, response) => {
+  const { user_id } = request.userDetails;
+  console.log(user_id);
+  const getTweets = `
+  SELECT
+    t.tweet,
+    COUNT(DISTINCT CASE WHEN l.like_id IS NOT NULL THEN l.like_id END) AS likes,
+    COUNT(DISTINCT CASE WHEN r.reply_id IS NOT NULL THEN r.reply_id END) AS replies
+FROM
+    (tweet t
+    LEFT JOIN like l ON t.tweet_id = l.tweet_id)
+    LEFT JOIN reply r ON t.tweet_id = r.tweet_id
+WHERE
+    t.user_id = ${user_id}
+GROUP BY
+    t.tweet;
+`;
+
+  const userTweetsInfo = await db.all(getTweets);
+  response.send(userTweetsInfo);
+});
